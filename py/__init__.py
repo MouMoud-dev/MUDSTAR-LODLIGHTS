@@ -62,6 +62,12 @@ class MUDSTAR_PG_LodLightSettings(PropertyGroup):
         description="Enable LOD light generation for this light",
         default=True,
     )
+    
+    is_lod_light: BoolProperty(
+        name="Is LOD Light",
+        description="This is a generated LOD light",
+        default=False,
+    )
 
 
 # Operator to generate LOD lights
@@ -98,6 +104,9 @@ class MUDSTAR_OT_GenerateLodLights(Operator):
                 # Create new object
                 lod_light_obj = bpy.data.objects.new(name=lod_name, object_data=lod_light_data)
                 
+                # Mark as LOD light
+                lod_light_obj.mudstar_lod_settings.is_lod_light = True
+                
                 # Link to collection
                 context.collection.objects.link(lod_light_obj)
                 
@@ -123,8 +132,11 @@ class MUDSTAR_OT_ExportLodLights(Operator):
     filepath: StringProperty(subtype='FILE_PATH')
     
     def execute(self, context):
-        # Get all LOD lights
-        lod_lights = [obj for obj in bpy.data.objects if obj.type == 'LIGHT' and '_LOD' in obj.name]
+        # Get all LOD lights using the custom property
+        lod_lights = [obj for obj in bpy.data.objects 
+                     if obj.type == 'LIGHT' and 
+                     hasattr(obj, 'mudstar_lod_settings') and 
+                     obj.mudstar_lod_settings.is_lod_light]
         
         if not lod_lights:
             self.report({'WARNING'}, "No LOD lights found")
@@ -132,7 +144,7 @@ class MUDSTAR_OT_ExportLodLights(Operator):
         
         # Export logic would go here
         # For now, just report success
-        self.report({'INFO'}, f"Exported {len(lod_lights)} LOD light(s)")
+        self.report({'INFO'}, f"Would export {len(lod_lights)} LOD light(s) (export functionality not yet implemented)")
         return {'FINISHED'}
     
     def invoke(self, context, event):
@@ -160,12 +172,6 @@ class MUDSTAR_PT_LodLightsPanel(Panel):
         # Settings section
         if context.active_object and context.active_object.type == 'LIGHT':
             obj = context.active_object
-            
-            # Ensure property group exists
-            if not hasattr(obj, 'mudstar_lod_settings'):
-                layout.label(text="No LOD settings available", icon='ERROR')
-                return
-            
             settings = obj.mudstar_lod_settings
             
             box = layout.box()
