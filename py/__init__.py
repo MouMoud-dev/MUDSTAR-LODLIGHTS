@@ -448,26 +448,25 @@ class MUDSTAR_OT_ExportLodLights(Operator):
             return {'CANCELLED'}
         
         try:
-            # Get base filename without extension
+            # Use the exact filename provided by user for lodlights file
+            lodlights_path = self.filepath
+            
+            # Get base filename without extension for naming
             base_path = os.path.splitext(self.filepath)[0]
             # Remove .ymap if present
             if base_path.endswith('.ymap'):
                 base_path = base_path[:-5]
             
-            # Extract base name for naming
-            base_name = os.path.basename(base_path)
+            # Extract base name for internal naming
+            lodlights_name = os.path.basename(base_path)
             
-            # Generate filenames
-            # Replace 'lodlights' with 'distlodlights' if present, otherwise add 'dist'
-            if 'lodlights' in base_name:
-                distant_name = base_name.replace('lodlights', 'distlodlights')
+            # Generate distant filename by replacing 'lodlights' with 'distlodlights'
+            if 'lodlights' in lodlights_name:
+                distant_name = lodlights_name.replace('lodlights', 'distlodlights')
             else:
-                distant_name = base_name + '_distlodlights'
+                distant_name = lodlights_name + '_distlodlights'
             
-            lodlights_name = base_name if 'lodlights' in base_name else base_name + '_lodlights'
-            
-            # Full paths
-            lodlights_path = os.path.join(os.path.dirname(self.filepath), lodlights_name + '.ymap.xml')
+            # Full path for distant file
             distant_path = os.path.join(os.path.dirname(self.filepath), distant_name + '.ymap.xml')
             
             # Calculate extents
