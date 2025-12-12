@@ -440,7 +440,7 @@ class MUDSTAR_OT_ExportLodLights(Operator):
                      obj.get("is_lod_light", False)]
         
         if not lod_lights:
-            self.report({'WARNING'}, "No LOD lights found")
+            self.report({'WARNING'}, "No LOD lights found to export. Import a ymap first or mark lights as LOD lights.")
             return {'CANCELLED'}
         
         if not self.filepath:
@@ -448,26 +448,48 @@ class MUDSTAR_OT_ExportLodLights(Operator):
             return {'CANCELLED'}
         
         try:
-            # Use the exact filename provided by user for lodlights file
-            lodlights_path = self.filepath
+            # Get collection name from first LOD light
+            collection_name = None
+            for light in lod_lights:
+                for coll in light.users_collection:
+                    if coll.name and coll.name != 'Scene Collection':
+                        collection_name = coll.name
+                        break
+                if collection_name:
+                    break
             
-            # Get base filename without extension for naming
-            base_path = os.path.splitext(self.filepath)[0]
-            # Remove .ymap if present
-            if base_path.endswith('.ymap'):
-                base_path = base_path[:-5]
+            # If no collection name found, try to extract from filepath
+            if not collection_name:
+                base_filename = os.path.basename(self.filepath)
+                if base_filename and base_filename != '.ymap.xml':
+                    collection_name = os.path.splitext(base_filename)[0]
+                    if collection_name.endswith('.ymap'):
+                        collection_name = collection_name[:-5]
             
-            # Extract base name for internal naming
-            lodlights_name = os.path.basename(base_path)
+            # Fallback to generic name
+            if not collection_name or collection_name == '':
+                collection_name = 'export'
             
-            # Generate distant filename by replacing 'lodlights' with 'distlodlights'
+            # Generate filenames based on collection name
+            # If collection name already contains 'lodlights', use it as is
+            if 'lodlights' in collection_name.lower():
+                lodlights_name = collection_name
+            else:
+                lodlights_name = collection_name + '_lodlights'
+            
+            # Generate distant name
             if 'lodlights' in lodlights_name:
                 distant_name = lodlights_name.replace('lodlights', 'distlodlights')
             else:
                 distant_name = lodlights_name + '_distlodlights'
             
-            # Full path for distant file
-            distant_path = os.path.join(os.path.dirname(self.filepath), distant_name + '.ymap.xml')
+            # Construct full paths
+            directory = os.path.dirname(self.filepath) if self.filepath else ''
+            if not directory:
+                directory = os.path.dirname(bpy.data.filepath) if bpy.data.filepath else os.getcwd()
+            
+            lodlights_path = os.path.join(directory, lodlights_name + '.ymap.xml')
+            distant_path = os.path.join(directory, distant_name + '.ymap.xml')
             
             # Calculate extents
             min_x = min(light.location.x for light in lod_lights)
@@ -498,7 +520,7 @@ class MUDSTAR_OT_ExportLodLights(Operator):
                                           stream_max_x, stream_max_y, stream_max_z,
                                           min_x, min_y, min_z, max_x, max_y, max_z)
             
-            self.report({'INFO'}, f"Exported {len(lod_lights)} LOD light(s) to:\n{lodlights_path}\n{distant_path}")
+            self.report({'INFO'}, f"Exported {len(lod_lights)} LOD light(s) to:\n- {os.path.basename(lodlights_path)}\n- {os.path.basename(distant_path)}")
             return {'FINISHED'}
             
         except Exception as e:
@@ -719,12 +741,15 @@ class MUDSTAR_OT_ExportLodLights(Operator):
         rgbi_values = []
         for light in lights:
             color = light.data.color
-            r = int(color[0] * 255)
-            g = int(color[1] * 255)
-            b = int(color[2] * 255)
-            i = int(min(light.data.energy * 10, 255))
+            r = int(min(max(color[0] * 255, 0), 255))
+            g = int(min(max(color[1] * 255, 0), 255))
+            b = int(min(max(color[2] * 255, 0), 255))
             
-            # Pack as RGBI integer
+            # Calculate intensity from falloff or energy
+            falloff = light.get("gta_falloff", light.data.energy)
+            i = int(min(max(falloff * 10, 0), 255))
+            
+            # Pack as RGBI integer (R|G|B|I format)
             rgbi = (r << 24) | (g << 16) | (b << 8) | i
             rgbi_values.append(str(rgbi))
         
