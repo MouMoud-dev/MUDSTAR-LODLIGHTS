@@ -20,16 +20,16 @@ MUDSTAR LOD Lights is a Blender addon that allows users to edit LOD lights and a
 
 1. Download the latest release or clone this repository
 2. In Blender, go to `Edit > Preferences > Add-ons`
-3. Click `Install` and select the `py/__init__.py` file
+3. Click `Install` and select the `__init__.py` file from the root folder
 4. Enable the "MUDSTAR LOD Lights" addon from the list
-5. The addon panel will appear in the 3D View sidebar under the "MUDSTAR" tab
+5. The addon panel will appear in the 3D View sidebar under the "M*LODLights" tab
 
 ## Usage
 
 1. Select a light object in your scene
 2. Open the sidebar (press `N` in the 3D viewport)
-3. Navigate to the "MUDSTAR" tab
-4. Configure LOD light settings:
+3. Navigate to the "M*LODLights" tab
+4. View LOD light information and configure settings:
    - **Enable LOD Light**: Toggle LOD generation for this light
    - **Intensity**: Set the light intensity for LOD
    - **Color**: Choose the light color
@@ -46,12 +46,15 @@ MUDSTAR LOD Lights is a Blender addon that allows users to edit LOD lights and a
 
 ```
 MUDSTAR-LODLIGHTS/
-├── py/                      # Python addon source code
-│   └── __init__.py         # Main addon file
-├── mudstar_lodlights.svg   # Addon logo
-├── LICENSE                 # MIT License
-├── README.md              # This file
-└── .gitignore            # Git ignore rules
+├── __init__.py             # Main addon initialization
+├── py/                     # Python addon source code
+│   ├── properties.py      # Property definitions
+│   ├── operators.py       # Import/Export operators
+│   └── ui.py             # User interface panels
+├── mudstar_lodlights.svg  # Addon logo
+├── LICENSE                # MIT License
+├── README.md             # This file
+└── .gitignore           # Git ignore rules
 ```
 
 ## License
