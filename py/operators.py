@@ -72,10 +72,29 @@ class MUDSTAR_OT_ImportLodLights(Operator):
         else:
             collection = bpy.data.collections.new(filename)
             context.scene.collection.children.link(collection)
+            # Set collection color to yellow for LOD lights
+            collection.color_tag = 'COLOR_03'  # Yellow
         
         # Parse XML
         tree = ET.parse(filepath)
         root = tree.getroot()
+        
+        # Get parent name for distant file naming
+        parent_name_element = root.find('.//parent')
+        if parent_name_element is not None and parent_name_element.text:
+            # Store the distant LOD filename in collection properties
+            collection["distant_lod_name"] = parent_name_element.text
+        else:
+            # Try to derive distant name from current filename
+            if 'lodlights' in filename.lower():
+                # Replace various LOD patterns with dist patterns
+                distant_name = filename.replace('_lodlights', '_distantlights')
+                distant_name = distant_name.replace('_LODLIGHTS', '_distantlights')
+                distant_name = distant_name.replace('lodlights', 'distantlights')
+                distant_name = distant_name.replace('LODLIGHTS', 'distantlights')
+                collection["distant_lod_name"] = distant_name
+            else:
+                collection["distant_lod_name"] = filename + "_distantlights"
         
         # Get LOD lights data
         lod_lights_soa = root.find('.//LODLightsSOA')
@@ -336,8 +355,7 @@ class MUDSTAR_OT_ImportLodLights(Operator):
             light_obj.location = light_data.get('location', [0.0, 0.0, 0.0])
             imported_count += 1
         
-        self.report({'INFO'}, f"Imported {imported_count} LOD light(s)")
-        return {'FINISHED'}
+        return imported_count
     
     def invoke(self, context, event):
         context.window_manager.fileselect_add(self)
@@ -345,50 +363,79 @@ class MUDSTAR_OT_ImportLodLights(Operator):
 
 
 class MUDSTAR_OT_ExportLodLights(Operator):
-    """Export LOD lights to GTA V ymap.xml format"""
+    """Export selected collections with LOD lights to GTA V ymap.xml format"""
     bl_idname = "mudstar.export_lod_lights"
     bl_label = "Export LOD Lights"
     bl_options = {'REGISTER'}
     
-    filepath: StringProperty(subtype='FILE_PATH')
-    filter_glob: StringProperty(default='*.ymap.xml', options={'HIDDEN'})
+    directory: StringProperty(subtype='DIR_PATH')
     
     def execute(self, context):
-        # Get all LOD lights
-        lod_lights = [obj for obj in bpy.data.objects 
-                     if obj.type == 'LIGHT' and obj.get("is_lod_light", False)]
+        selected_collections = []
+        collections_to_export = set()
         
-        if not lod_lights:
-            self.report({'WARNING'}, "No LOD lights found to export. Import a ymap first.")
+        # Check active collection in outliner (selected collection)
+        view_layer = context.view_layer
+        active_layer_collection = view_layer.active_layer_collection
+        
+        if active_layer_collection and active_layer_collection.collection:
+            coll = active_layer_collection.collection
+            # Only export if it's not the root Scene Collection and has LOD lights
+            if coll.name != 'Scene Collection':
+                lod_lights = [o for o in coll.objects 
+                             if o.type == 'LIGHT' and o.get("is_lod_light", False)]
+                if lod_lights:
+                    collections_to_export.add(coll.name)
+        
+        # If no active collection selected or no LOD lights, export all
+        if not collections_to_export:
+            for coll in bpy.data.collections:
+                lod_lights = [obj for obj in coll.objects 
+                             if obj.type == 'LIGHT' and obj.get("is_lod_light", False)]
+                if lod_lights:
+                    collections_to_export.add(coll.name)
+        
+        # Build export list
+        for coll_name in collections_to_export:
+            coll = bpy.data.collections.get(coll_name)
+            if coll:
+                lod_lights = [obj for obj in coll.objects 
+                             if obj.type == 'LIGHT' and obj.get("is_lod_light", False)]
+                if lod_lights:
+                    selected_collections.append((coll.name, lod_lights))
+        
+        if not selected_collections:
+            self.report({'WARNING'}, "No collections with LOD lights found.")
             return {'CANCELLED'}
         
-        if not self.filepath:
-            self.report({'ERROR'}, "No file path specified")
+        if not self.directory:
+            self.report({'ERROR'}, "No directory specified")
             return {'CANCELLED'}
         
         try:
-            # Get collection name
-            collection_name = self._get_collection_name(lod_lights)
+            # Export each collection
+            total_exported = 0
+            files_created = []
             
-            # Generate filenames
-            lodlights_name, distant_name = self._generate_filenames(collection_name)
+            for collection_name, lod_lights in selected_collections:
+                # Generate filenames
+                lodlights_name, distant_name = self._generate_filenames(collection_name)
+                
+                lodlights_path = os.path.join(self.directory, lodlights_name + '.ymap.xml')
+                distant_path = os.path.join(self.directory, distant_name + '.ymap.xml')
+                
+                # Calculate extents
+                extents = self._calculate_extents(lod_lights)
+                
+                # Export files
+                self._export_lodlights(lodlights_path, lodlights_name, distant_name, lod_lights, extents)
+                self._export_distant_lodlights(distant_path, distant_name, lod_lights, extents)
+                
+                files_created.append(lodlights_name + '.ymap.xml')
+                files_created.append(distant_name + '.ymap.xml')
+                total_exported += len(lod_lights)
             
-            # Construct paths
-            directory = os.path.dirname(self.filepath) if self.filepath else ''
-            if not directory:
-                directory = os.path.dirname(bpy.data.filepath) if bpy.data.filepath else os.getcwd()
-            
-            lodlights_path = os.path.join(directory, lodlights_name + '.ymap.xml')
-            distant_path = os.path.join(directory, distant_name + '.ymap.xml')
-            
-            # Calculate extents
-            extents = self._calculate_extents(lod_lights)
-            
-            # Export files
-            self._export_lodlights(lodlights_path, lodlights_name, distant_name, lod_lights, extents)
-            self._export_distant_lodlights(distant_path, distant_name, lod_lights, extents)
-            
-            self.report({'INFO'}, f"Exported {len(lod_lights)} LOD light(s) to:\n- {os.path.basename(lodlights_path)}\n- {os.path.basename(distant_path)}")
+            self.report({'INFO'}, f"Exported {total_exported} LOD light(s) from {len(selected_collections)} collection(s)\nCreated {len(files_created)} file(s)")
             return {'FINISHED'}
             
         except Exception as e:
@@ -397,36 +444,37 @@ class MUDSTAR_OT_ExportLodLights(Operator):
             traceback.print_exc()
             return {'CANCELLED'}
     
-    def _get_collection_name(self, lights):
-        """Get collection name from lights"""
-        for light in lights:
-            for coll in light.users_collection:
-                if coll.name and coll.name != 'Scene Collection':
-                    return coll.name
-        
-        # Fallback
-        base_filename = os.path.basename(self.filepath)
-        if base_filename and base_filename != '.ymap.xml':
-            name = os.path.splitext(base_filename)[0]
-            if name.endswith('.ymap'):
-                name = name[:-5]
-            return name if name else 'export'
-        
-        return 'export'
-    
     def _generate_filenames(self, collection_name):
-        """Generate lodlights and distant filenames"""
-        if 'lodlights' in collection_name.lower():
-            lodlights_name = collection_name
-        else:
-            lodlights_name = collection_name + '_lodlights'
+        """Generate lodlights and distant filenames using stored names"""
+        # Get the collection object
+        coll = bpy.data.collections.get(collection_name)
         
-        if 'lodlights' in lodlights_name:
-            distant_name = lodlights_name.replace('lodlights', 'distlodlights')
+        # Use the collection name as lodlights name
+        lodlights_name = collection_name
+        
+        # Get stored distant name from collection properties
+        if coll and "distant_lod_name" in coll:
+            distant_name = coll["distant_lod_name"]
         else:
-            distant_name = lodlights_name + '_distlodlights'
+            # Fallback: try to derive distant name
+            if 'lodlights' in collection_name.lower():
+                distant_name = collection_name.replace('_lodlights', '_distantlights')
+                distant_name = distant_name.replace('_LODLIGHTS', '_distantlights')
+                distant_name = distant_name.replace('lodlights', 'distantlights')
+                distant_name = distant_name.replace('LODLIGHTS', 'distantlights')
+            elif 'lod' in collection_name.lower():
+                distant_name = collection_name.replace('_lod', '_dist')
+                distant_name = distant_name.replace('lod', 'dist')
+            else:
+                distant_name = collection_name + '_distantlights'
         
         return lodlights_name, distant_name
+    
+    def _get_all_layer_collections(self, layer_collection):
+        """Recursively get all layer collections"""
+        yield layer_collection
+        for child in layer_collection.children:
+            yield from self._get_all_layer_collections(child)
     
     def _calculate_extents(self, lights):
         """Calculate bounding extents for lights"""
@@ -652,6 +700,7 @@ class MUDSTAR_OT_ExportLodLights(Operator):
         
         with open(filepath, 'wb') as f:
             f.write(pretty_xml)
+    
     
     def invoke(self, context, event):
         context.window_manager.fileselect_add(self)

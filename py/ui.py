@@ -74,9 +74,21 @@ class MUDSTAR_PT_LodLightsPanel(Panel):
     
     def _draw_actions(self, layout):
         """Draw action buttons"""
-        col = layout.column(align=True)
+        box = layout.box()
+        box.label(text="Import/Export", icon='FILEBROWSER')
+        
+        col = box.column(align=True)
         col.operator("mudstar.import_lod_lights", text="Import", icon='IMPORT')
         col.operator("mudstar.export_lod_lights", text="Export", icon='EXPORT')
+        
+        # Stats
+        lod_count = sum(1 for obj in bpy.data.objects 
+                       if obj.type == 'LIGHT' and obj.get("is_lod_light", False))
+        
+        if lod_count > 0:
+            layout.separator()
+            info_box = layout.box()
+            info_box.label(text=f"Total LOD Lights: {lod_count}", icon='LIGHT_DATA')
 
 
 # Registration

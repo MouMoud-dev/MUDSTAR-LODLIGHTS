@@ -11,9 +11,12 @@ MUDSTAR LOD Lights is a Blender addon that allows users to edit LOD lights and a
 ## Features
 
 - **LOD Light Editor**: Edit properties of LOD lights directly in Blender
+- **Multi-file Import**: Import multiple ymap.xml files at once
+- **Automatic Collection Management**: Each imported file creates its own collection
+- **Multi-collection Export**: Export all collections with LOD lights in one operation
 - **Automatic Generation**: Generate distant LOD lights from existing lights
 - **GTA V Compatible**: Designed specifically for GTA V modding workflow
-- **Easy Export**: Export LOD lights data with a single click
+- **Easy Export**: Export LOD lights data with automatic file naming
 - **Intuitive UI**: Simple sidebar panel in Blender's 3D viewport
 
 ## Installation
@@ -26,16 +29,27 @@ MUDSTAR LOD Lights is a Blender addon that allows users to edit LOD lights and a
 
 ## Usage
 
+### Import
+1. Click "Import (Multi-file)" in the M*LODLights panel
+2. Select one or more `.ymap.xml` files (hold Shift to select multiple)
+3. Each file will be imported into its own collection
+4. LOD lights will be created with all GTA V properties preserved
+
+### Export
+1. Click "Export All Collections" in the M*LODLights panel
+2. Select a directory for export
+3. All collections containing LOD lights will be exported as separate file pairs:
+   - `collectionname_lodlights.ymap.xml` (LOD light data)
+   - `collectionname_distlodlights.ymap.xml` (distant light positions and colors)
+
+### View Light Information
 1. Select a light object in your scene
 2. Open the sidebar (press `N` in the 3D viewport)
 3. Navigate to the "M*LODLights" tab
 4. View LOD light information and configure settings:
-   - **Enable LOD Light**: Toggle LOD generation for this light
-   - **Intensity**: Set the light intensity for LOD
-   - **Color**: Choose the light color
-   - **LOD Distance**: Set the distance at which LOD light becomes visible
-5. Click "Generate LOD Lights" to create LOD versions of selected lights
-6. Use "Export LOD Lights" to export your LOD lights data
+   - View if the light is a LOD light
+   - See Blender properties (intensity, color)
+   - View GTA V properties (falloff, corona, hash, time flags)
 
 ## Requirements
 
