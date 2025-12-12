@@ -34,6 +34,7 @@ MUDSTAR LOD Lights is a Blender addon that allows users to edit LOD lights and a
 2. Select one or more `.ymap.xml` files (hold Shift to select multiple)
 3. Each file will be imported into its own collection
 4. LOD lights will be created with all GTA V properties preserved
+5. ⚠️ You need to export from code walker the lod + dist lod, exemple : lodlights_medium015.ymap + distlodlights_medium015.ymap
 
 ### Export
 1. Click "Export All Collections" in the M*LODLights panel
