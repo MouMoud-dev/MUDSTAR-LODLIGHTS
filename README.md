@@ -23,7 +23,7 @@ MUDSTAR LOD Lights is a Blender addon that allows users to edit LOD lights and a
 
 1. Download the latest release or clone this repository
 2. In Blender, go to `Edit > Preferences > Add-ons`
-3. Click `Install` and select the `__init__.py` file from the root folder
+3. Click `Install` and select `MUDSTAR-LODLIGHTS.zip`
 4. Enable the "MUDSTAR LOD Lights" addon from the list
 5. The addon panel will appear in the 3D View sidebar under the "M*LODLights" tab
 
@@ -60,15 +60,15 @@ MUDSTAR LOD Lights is a Blender addon that allows users to edit LOD lights and a
 
 ```
 MUDSTAR-LODLIGHTS/
-├── __init__.py             # Main addon initialization
-├── py/                     # Python addon source code
-│   ├── properties.py      # Property definitions
-│   ├── operators.py       # Import/Export operators
-│   └── ui.py             # User interface panels
-├── mudstar_lodlights.svg  # Addon logo
-├── LICENSE                # MIT License
-├── README.md             # This file
-└── .gitignore           # Git ignore rules
+├── __init__.py             
+├── py/                     
+│   ├── properties.py      
+│   ├── operators.py       
+│   └── ui.py             
+├── mudstar_lodlights.svg  
+├── LICENSE                
+├── README.md             
+└── .gitignore           
 ```
 
 ## License
@@ -85,8 +85,8 @@ If you encounter any issues or have questions, please open an issue on the GitHu
 
 ## Credits
 
-Developed by MouMoud-dev
+Developed by MouMoud
 
 ---
 
-**Note**: This addon is designed for GTA V modding purposes. Make sure you comply with all relevant terms of service and licensing agreements when modding games.
+**Note**: This addon is designed for GTA V modding purposes.
