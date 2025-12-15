@@ -1,12 +1,17 @@
 # MUDSTAR LOD Lights
 
-![MUDSTAR LOD Lights Logo](mudstar_lodlights.png)
+<img width="236" height="235" alt="mudstar_lodlights" src="https://github.com/user-attachments/assets/0aa066ea-2699-4c39-93a2-2a9b378c6b0b" />
 
 A Blender addon for editing and generating LOD (Level of Detail) lights for GTA V.
 
 ## Description
 
 MUDSTAR LOD Lights is a Blender addon that allows users to edit LOD lights and automatically generate distant LOD lights at export. This tool is specifically designed for GTA V modding workflows, making it easier to manage lighting in your custom maps and models.
+
+
+## Other tool or tips
+
+https://discord.com/invite/U59AKynSzY
 
 ## Features
 
