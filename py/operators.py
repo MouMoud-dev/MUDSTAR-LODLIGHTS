@@ -261,13 +261,15 @@ class MUDSTAR_OT_ImportLodLights(Operator):
             inner_angle = light_data['cone_inner'][i] if i < len(light_data['cone_inner']) else 14
             outer_angle = light_data['cone_outer'][i] if i < len(light_data['cone_outer']) else 35
             
-            # Get color from RGBI
+            # Get color from RGBI (packed as: I << 24 | R << 16 | G << 8 | B)
             color = (1.0, 1.0, 1.0)
+            rgbi_intensity = 0
             if i < len(rgbi_list):
                 rgbi = rgbi_list[i]
-                r = ((rgbi >> 24) & 0xFF) / 255.0
-                g = ((rgbi >> 16) & 0xFF) / 255.0
-                b = ((rgbi >> 8) & 0xFF) / 255.0
+                rgbi_intensity = (rgbi >> 24) & 0xFF
+                r = ((rgbi >> 16) & 0xFF) / 255.0
+                g = ((rgbi >> 8) & 0xFF) / 255.0
+                b = (rgbi & 0xFF) / 255.0
                 color = (r, g, b)
             
             # Determine light type
@@ -293,6 +295,7 @@ class MUDSTAR_OT_ImportLodLights(Operator):
             light_obj["gta_hash"] = hash_val
             light_obj["gta_corona_intensity"] = corona
             light_obj["gta_time_flags"] = time_flag
+            light_obj["gta_rgbi_intensity"] = rgbi_intensity
             
             # Link to collection
             collection.objects.link(light_obj)
@@ -314,12 +317,11 @@ class MUDSTAR_OT_ImportLodLights(Operator):
                 )
             
             # Set rotation from direction
+            # Light's local -Z axis should point along the direction vector
             if dir_x != 0 or dir_y != 0 or dir_z != 0:
                 direction = Vector((dir_x, dir_y, dir_z)).normalized()
-                up = Vector((0, 0, -1))
-                if direction.length > 0:
-                    rotation = up.rotation_difference(direction)
-                    light_obj.rotation_euler = rotation.to_euler()
+                quat = direction.to_track_quat('-Z', 'Y')
+                light_obj.rotation_euler = quat.to_euler()
             
             imported_count += 1
         
@@ -604,20 +606,15 @@ class MUDSTAR_OT_ExportLodLights(Operator):
         direction = ET.SubElement(parent, 'direction', itemType='FloatXYZ')
         for light in lights:
             item = ET.SubElement(direction, 'Item')
-            rotation = light.rotation_euler
-            dir_x = -math.sin(rotation.z) * math.cos(rotation.x)
-            dir_y = math.cos(rotation.z) * math.cos(rotation.x)
-            dir_z = -math.sin(rotation.x)
+            # Compute direction from full rotation matrix
+            # Light points along its local -Z axis
+            mat = light.rotation_euler.to_matrix()
+            dir_vec = mat @ Vector((0, 0, -1))
+            dir_vec.normalize()
             
-            length = math.sqrt(dir_x**2 + dir_y**2 + dir_z**2)
-            if length > 0:
-                dir_x, dir_y, dir_z = dir_x/length, dir_y/length, dir_z/length
-            else:
-                dir_x, dir_y, dir_z = 0, 0, -1
-            
-            ET.SubElement(item, 'x', value=f'{dir_x:.6g}')
-            ET.SubElement(item, 'y', value=f'{dir_y:.6g}')
-            ET.SubElement(item, 'z', value=f'{dir_z:.6g}')
+            ET.SubElement(item, 'x', value=f'{dir_vec.x:.6g}')
+            ET.SubElement(item, 'y', value=f'{dir_vec.y:.6g}')
+            ET.SubElement(item, 'z', value=f'{dir_vec.z:.6g}')
         
         # Falloff
         falloff_values = [f'{light.get("gta_falloff", light.data.energy / 10.0):.6g}' for light in lights]
@@ -640,8 +637,8 @@ class MUDSTAR_OT_ExportLodLights(Operator):
         outer_angles = []
         for light in lights:
             if light.data.type == 'SPOT':
-                inner = int(math.degrees(light.data.spot_size * (1 - light.data.spot_blend)))
-                outer = int(math.degrees(light.data.spot_size))
+                inner = round(math.degrees(light.data.spot_size * (1 - light.data.spot_blend)))
+                outer = round(math.degrees(light.data.spot_size))
             else:
                 inner, outer = 14, 35
             inner_angles.append(str(inner))
@@ -664,7 +661,7 @@ class MUDSTAR_OT_ExportLodLights(Operator):
             ET.SubElement(item, 'y', value=f'{light.location.y:.6g}')
             ET.SubElement(item, 'z', value=f'{light.location.z:.6g}')
         
-        # RGBI
+        # RGBI (packed as: I << 24 | R << 16 | G << 8 | B)
         rgbi_values = []
         for light in lights:
             color = light.data.color
@@ -672,10 +669,9 @@ class MUDSTAR_OT_ExportLodLights(Operator):
             g = int(min(max(color[1] * 255, 0), 255))
             b = int(min(max(color[2] * 255, 0), 255))
             
-            falloff = light.get("gta_falloff", light.data.energy)
-            i = int(min(max(falloff * 10, 0), 255))
+            i = int(min(max(light.get("gta_rgbi_intensity", 0), 0), 255))
             
-            rgbi = (r << 24) | (g << 16) | (b << 8) | i
+            rgbi = (i << 24) | (r << 16) | (g << 8) | b
             rgbi_values.append(str(rgbi))
         
         ET.SubElement(parent, 'RGBI').text = '\n   ' + ' '.join(rgbi_values) + '\n  '
